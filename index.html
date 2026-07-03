@@ -235,6 +235,11 @@
   </div>
 </div>
 
+<div class="card" style="text-align:center;">
+  <button class="primary" style="width:100%; padding:12px;" onclick="manualSave()">💾 Save outing</button>
+  <div id="saveConfirm" class="muted" style="margin-top:8px; min-height:16px;"></div>
+</div>
+
 <div class="card">
   <button onclick="resetAll()" style="color:#b33;">Clear everything</button>
 </div>
@@ -243,69 +248,56 @@
 let people = [];
 let items = [];
 
-// ---- Outings storage (persists across visits) ----
-let outings = [];
-let currentOutingId = null;
+// ---- Outings storage ----
+let outings = JSON.parse(localStorage.getItem('outings') || '[]');
+let currentOutingId = localStorage.getItem('currentOutingId');
 
-async function loadStoredData() {
-  try {
-    const o = await window.storage.get('outings');
-    outings = o ? JSON.parse(o.value) : [];
-  } catch (e) { outings = []; }
-  try {
-    const c = await window.storage.get('currentOutingId');
-    currentOutingId = c ? c.value : null;
-  } catch (e) { currentOutingId = null; }
+function saveOutings() {
+  localStorage.setItem('outings', JSON.stringify(outings));
+  localStorage.setItem('currentOutingId', currentOutingId);
 }
 
-async function saveOutings() {
-  try {
-    await window.storage.set('outings', JSON.stringify(outings));
-    await window.storage.set('currentOutingId', currentOutingId || '');
-  } catch (e) { console.error('Storage error:', e); }
-}
-
-async function saveCurrentState() {
+function saveCurrentState() {
   if (!currentOutingId) return;
   const outing = outings.find(o => o.id === currentOutingId);
   if (!outing) return;
   outing.people = people;
   outing.items = items;
   outing.tipPercent = document.getElementById('tipPercent').value;
-  await saveOutings();
+  saveOutings();
   renderOutingsList();
 }
 
-async function newOuting() {
+function newOuting() {
   const name = prompt('Name this outing:', 'Outing ' + (outings.length + 1));
   if (name === null) return;
   const label = name.trim() || ('Outing ' + (outings.length + 1));
   const outing = { id: Date.now().toString(), label, people: [], items: [], tipPercent: '10' };
   outings.push(outing);
   currentOutingId = outing.id;
-  await loadOuting(currentOutingId);
-  await saveOutings();
+  loadOuting(currentOutingId);
+  saveOutings();
   toggleMenu();
 }
 
-async function renameOuting(id) {
+function renameOuting(id) {
   const outing = outings.find(o => o.id === id);
   if (!outing) return;
   const name = prompt('Rename outing:', outing.label);
   if (name === null || !name.trim()) return;
   outing.label = name.trim();
-  await saveOutings();
+  saveOutings();
   renderOutingsList();
 }
 
-async function loadOuting(id) {
+function loadOuting(id) {
   const outing = outings.find(o => o.id === id);
   if (!outing) return;
   currentOutingId = id;
   people = outing.people || [];
   items = outing.items || [];
   document.getElementById('tipPercent').value = outing.tipPercent || '10';
-  await saveOutings();
+  saveOutings();
   render();
   renderOutingsList();
 }
@@ -333,12 +325,12 @@ function renderOutingsList() {
   });
 }
 
-async function deleteOuting(id) {
+function deleteOuting(id) {
   if (!confirm('Delete this outing?')) return;
   outings = outings.filter(o => o.id !== id);
   if (currentOutingId === id) {
     if (outings.length > 0) {
-      await loadOuting(outings[outings.length - 1].id);
+      loadOuting(outings[outings.length - 1].id);
     } else {
       currentOutingId = null;
       people = [];
@@ -346,11 +338,11 @@ async function deleteOuting(id) {
       render();
     }
   }
-  await saveOutings();
+  saveOutings();
   renderOutingsList();
 }
 
-async function addPerson() {
+function addPerson() {
   const input = document.getElementById('nameInput');
   const name = input.value.trim();
   if (!name) return;
@@ -358,17 +350,17 @@ async function addPerson() {
   people.push(name);
   input.value = '';
   render();
-  await saveCurrentState();
+  saveCurrentState();
 }
 
-async function removePerson(name) {
+function removePerson(name) {
   people = people.filter(p => p !== name);
   items = items.filter(i => i.person !== name);
   render();
-  await saveCurrentState();
+  saveCurrentState();
 }
 
-async function addItem() {
+function addItem() {
   const nameInput = document.getElementById('itemName');
   const amountInput = document.getElementById('itemAmount');
   const personSelect = document.getElementById('itemPerson');
@@ -380,21 +372,29 @@ async function addItem() {
   nameInput.value = '';
   amountInput.value = '';
   render();
-  await saveCurrentState();
+  saveCurrentState();
 }
 
-async function removeItem(index) {
+function removeItem(index) {
   items.splice(index, 1);
   render();
-  await saveCurrentState();
+  saveCurrentState();
 }
 
-async function resetAll() {
+function manualSave() {
+  saveCurrentState();
+  const el = document.getElementById('saveConfirm');
+  el.textContent = '✓ Saved at ' + new Date().toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' });
+  clearTimeout(window._saveMsgTimeout);
+  window._saveMsgTimeout = setTimeout(() => { el.textContent = ''; }, 3000);
+}
+
+function resetAll() {
   if (!confirm('Clear all people and items?')) return;
   people = [];
   items = [];
   render();
-  await saveCurrentState();
+  saveCurrentState();
 }
 
 function formatR(n) {
@@ -467,20 +467,16 @@ function render() {
 document.getElementById('nameInput').addEventListener('keydown', e => { if (e.key === 'Enter') addPerson(); });
 document.getElementById('itemAmount').addEventListener('keydown', e => { if (e.key === 'Enter') addItem(); });
 
-async function init() {
-  await loadStoredData();
-  if (!currentOutingId || !outings.find(o => o.id === currentOutingId)) {
-    if (outings.length === 0) {
-      await newOuting();
-    } else {
-      await loadOuting(outings[outings.length - 1].id);
-    }
+if (!currentOutingId || !outings.find(o => o.id === currentOutingId)) {
+  if (outings.length === 0) {
+    newOuting();
   } else {
-    await loadOuting(currentOutingId);
+    loadOuting(outings[outings.length - 1].id);
   }
-  renderOutingsList();
+} else {
+  loadOuting(currentOutingId);
 }
-init();
+renderOutingsList();
 </script>
 
 </body>
