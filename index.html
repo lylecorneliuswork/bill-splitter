@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Bill Splitter</title>
+
+<!-- Add to Home Screen support (iOS) -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Bill Splitter">
+<meta name="theme-color" content="#2b6b4f">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Crect width='180' height='180' rx='36' fill='%232b6b4f'/%3E%3Ctext x='90' y='118' font-size='90' text-anchor='middle' fill='white' font-family='Georgia,serif'%3ER%3C/text%3E%3C/svg%3E">
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    max-width: 640px;
+    margin: 0 auto;
+    padding: env(safe-area-inset-top, 20px) 20px calc(env(safe-area-inset-bottom, 20px) + 20px);
+    min-height: 100vh;
+    color: #2b2b28;
+    background-color: #efece2;
+    background-image:
+      linear-gradient(125deg, transparent 40%, rgba(90,110,95,0.18) 41%, rgba(90,110,95,0.10) 42%, transparent 44%),
+      linear-gradient(65deg, transparent 60%, rgba(150,130,80,0.16) 61%, rgba(150,130,80,0.08) 63%, transparent 66%),
+      linear-gradient(150deg, transparent 20%, rgba(70,90,75,0.14) 21%, transparent 23%),
+      linear-gradient(20deg, transparent 75%, rgba(120,100,70,0.15) 76%, rgba(120,100,70,0.06) 78%, transparent 81%),
+      radial-gradient(ellipse at 20% 15%, rgba(43,107,79,0.10) 0%, transparent 50%),
+      radial-gradient(ellipse at 85% 30%, rgba(180,150,90,0.14) 0%, transparent 55%),
+      radial-gradient(ellipse at 30% 85%, rgba(43,107,79,0.09) 0%, transparent 55%),
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='260' viewBox='0 0 260 260'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.012 0.06' numOctaves='4' seed='7' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0.25  0 0 0 0 0.3  0 0 0 0 0.27  0 0 0 0.5 0'/%3E%3C/filter%3E%3Crect width='260' height='260' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-attachment: fixed;
+    background-size: cover, cover, cover, cover, cover, cover, cover, 260px 260px;
+  }
+  h1 {
+    font-size: 24px;
+    font-weight: 600;
+    margin-bottom: 4px;
+    letter-spacing: 0.3px;
+    color: #1f3d30;
+  }
+  h2 {
+    font-size: 15px;
+    font-weight: 600;
+    margin: 28px 0 10px;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+    color: #4a6a5a;
+  }
+  .card {
+    background: rgba(255, 255, 255, 0.88);
+    backdrop-filter: blur(6px);
+    border: 1px solid rgba(43, 107, 79, 0.15);
+    border-radius: 12px;
+    padding: 18px;
+    margin-bottom: 16px;
+    box-shadow: 0 4px 14px rgba(31, 61, 48, 0.08);
+  }
+  .row { display: flex; gap: 8px; margin-bottom: 8px; }
+  input, select {
+    font-size: 15px;
+    padding: 8px 10px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    flex: 1;
+    min-width: 0;
+  }
+  button {
+    font-size: 15px;
+    padding: 8px 14px;
+    border: 1px solid #999;
+    background: #fafafa;
+    border-radius: 6px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  button:hover { background: #eee; }
+  button.primary {
+    background: #2b6b4f;
+    color: white;
+    border-color: #2b6b4f;
+    letter-spacing: 0.2px;
+  }
+  button.primary:hover { background: #1f5240; }
+  .grand {
+    font-size: 18px;
+    font-weight: 600;
+    border-top: 1px solid rgba(43, 107, 79, 0.25);
+    padding-top: 12px;
+    margin-top: 12px;
+    display: flex;
+    justify-content: space-between;
+    color: #1f3d30;
+  }
+  .del {
+    color: #b33;
+    border-color: #e0b0b0;
+    background: #fff;
+    padding: 6px 10px;
+    font-size: 13px;
+  }
+  ul.plain { list-style: none; padding: 0; margin: 0; }
+  ul.plain li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 0;
+    border-bottom: 1px solid #eee;
+    font-size: 14px;
+  }
+  ul.plain li:last-child { border-bottom: none; }
+  .item-name { font-weight: 500; }
+  .item-meta { color: #777; font-size: 13px; }
+  .totals-table { width: 100%; border-collapse: collapse; font-size: 15px; }
+  .totals-table td { padding: 8px 4px; border-bottom: 1px solid #eee; }
+  .totals-table tr:last-child td { border-bottom: none; }
+  .totals-table td.amount { text-align: right; font-variant-numeric: tabular-nums; }
+  .muted { color: #888; font-size: 13px; }
+  .empty { color: #999; font-size: 14px; padding: 8px 0; }
+  .tip-row { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+  .tip-row input[type=number] { max-width: 80px; flex: none; }
+  .menu-btn {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.85);
+    border: 1px solid rgba(43, 107, 79, 0.25);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    cursor: pointer;
+    z-index: 20;
+    box-shadow: 0 2px 8px rgba(31, 61, 48, 0.1);
+  }
+  .menu-btn span { width: 4px; height: 4px; border-radius: 50%; background: #2b6b4f; }
+  .menu-panel {
+    position: fixed;
+    top: 0; right: 0;
+    width: 260px;
+    max-width: 80vw;
+    height: 100%;
+    background: #faf8f2;
+    border-left: 1px solid rgba(43, 107, 79, 0.2);
+    box-shadow: -6px 0 20px rgba(31, 61, 48, 0.1);
+    padding: 60px 16px 16px;
+    transform: translateX(100%);
+    transition: transform 0.2s ease;
+    z-index: 15;
+    overflow-y: auto;
+  }
+  .menu-panel.open { transform: translateX(0); }
+  .menu-panel h3 { font-size: 14px; margin: 0 0 10px; text-transform: uppercase; letter-spacing: 0.4px; color: #4a6a5a; }
+  .outing-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 6px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+  }
+  .outing-item:hover { background: #f0f0f0; }
+  .outing-item.active { background: #e6f0ea; font-weight: 600; }
+  .overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.2);
+    z-index: 10;
+    display: none;
+  }
+  .overlay.open { display: block; }
+</style>
+</head>
+<body>
+
+<div class="menu-btn" onclick="toggleMenu()"><span></span><span></span><span></span></div>
+<div class="overlay" id="overlay" onclick="toggleMenu()"></div>
+<div class="menu-panel" id="menuPanel">
+  <h3>Outings</h3>
+  <button class="primary" style="width:100%; margin-bottom:10px;" onclick="newOuting()">+ New outing</button>
+  <div id="outingsList"></div>
+</div>
+
+<h1>Bill Splitter 🇿🇦</h1>
+<p class="muted">Split a bill between friends, in Rand, with tip shared evenly. Works fully offline.</p>
+
+<div class="card">
+  <h2 style="margin-top:0;">1. Party</h2>
+  <div class="row">
+    <input type="text" id="nameInput" placeholder="Add a person's name">
+    <button onclick="addPerson()">Add</button>
+  </div>
+  <ul class="plain" id="peopleList"></ul>
+</div>
+
+<div class="card">
+  <h2 style="margin-top:0;">2. Items</h2>
+  <div class="row">
+    <input type="text" id="itemName" placeholder="Item description">
+    <input type="number" id="itemAmount" placeholder="R amount" min="0" step="0.01" style="max-width:110px;">
+  </div>
+  <div class="row">
+    <select id="itemPerson"></select>
+    <button onclick="addItem()">Add item</button>
+  </div>
+  <ul class="plain" id="itemsList"></ul>
+</div>
+
+<div class="card">
+  <h2 style="margin-top:0;">3. Tip</h2>
+  <div class="tip-row">
+    <span>Tip percentage:</span>
+    <input type="number" id="tipPercent" value="10" min="0" step="1" onchange="render(); saveCurrentState();">
+    <span>%</span>
+    <span class="muted">(split evenly among everyone)</span>
+  </div>
+</div>
+
+<div class="card">
+  <h2 style="margin-top:0;">4. Totals</h2>
+  <table class="totals-table" id="totalsTable"></table>
+  <div class="grand">
+    <span>Bill total</span>
+    <span id="billTotal">R0.00</span>
+  </div>
+  <div class="grand" style="font-size:16px; font-weight:500;">
+    <span>Total incl. tip</span>
+    <span id="billTotalTip">R0.00</span>
+  </div>
+</div>
+
+<div class="card">
+  <button onclick="resetAll()" style="color:#b33;">Clear everything</button>
+</div>
+
+<script>
+let people = [];
+let items = [];
+
+// ---- Outings storage (persists across visits) ----
+let outings = [];
+let currentOutingId = null;
+
+async function loadStoredData() {
+  try {
+    const o = await window.storage.get('outings');
+    outings = o ? JSON.parse(o.value) : [];
+  } catch (e) { outings = []; }
+  try {
+    const c = await window.storage.get('currentOutingId');
+    currentOutingId = c ? c.value : null;
+  } catch (e) { currentOutingId = null; }
+}
+
+async function saveOutings() {
+  try {
+    await window.storage.set('outings', JSON.stringify(outings));
+    await window.storage.set('currentOutingId', currentOutingId || '');
+  } catch (e) { console.error('Storage error:', e); }
+}
+
+async function saveCurrentState() {
+  if (!currentOutingId) return;
+  const outing = outings.find(o => o.id === currentOutingId);
+  if (!outing) return;
+  outing.people = people;
+  outing.items = items;
+  outing.tipPercent = document.getElementById('tipPercent').value;
+  await saveOutings();
+  renderOutingsList();
+}
+
+async function newOuting() {
+  const name = prompt('Name this outing:', 'Outing ' + (outings.length + 1));
+  if (name === null) return;
+  const label = name.trim() || ('Outing ' + (outings.length + 1));
+  const outing = { id: Date.now().toString(), label, people: [], items: [], tipPercent: '10' };
+  outings.push(outing);
+  currentOutingId = outing.id;
+  await loadOuting(currentOutingId);
+  await saveOutings();
+  toggleMenu();
+}
+
+async function renameOuting(id) {
+  const outing = outings.find(o => o.id === id);
+  if (!outing) return;
+  const name = prompt('Rename outing:', outing.label);
+  if (name === null || !name.trim()) return;
+  outing.label = name.trim();
+  await saveOutings();
+  renderOutingsList();
+}
+
+async function loadOuting(id) {
+  const outing = outings.find(o => o.id === id);
+  if (!outing) return;
+  currentOutingId = id;
+  people = outing.people || [];
+  items = outing.items || [];
+  document.getElementById('tipPercent').value = outing.tipPercent || '10';
+  await saveOutings();
+  render();
+  renderOutingsList();
+}
+
+function toggleMenu() {
+  document.getElementById('menuPanel').classList.toggle('open');
+  document.getElementById('overlay').classList.toggle('open');
+}
+
+function renderOutingsList() {
+  const list = document.getElementById('outingsList');
+  list.innerHTML = '';
+  if (outings.length === 0) {
+    list.innerHTML = '<div class="empty">No outings yet.</div>';
+    return;
+  }
+  outings.slice().reverse().forEach(o => {
+    const div = document.createElement('div');
+    div.className = 'outing-item' + (o.id === currentOutingId ? ' active' : '');
+    const date = new Date(parseInt(o.id)).toLocaleDateString('en-ZA');
+    div.innerHTML = `<span onclick="loadOuting('${o.id}')" style="flex:1;">${o.label}<div class="muted" style="font-size:11px;">${date}</div></span>
+      <button class="del" style="border-color:#ccc;color:#666;" onclick="renameOuting('${o.id}')">✏️</button>
+      <button class="del" onclick="deleteOuting('${o.id}')">✕</button>`;
+    list.appendChild(div);
+  });
+}
+
+async function deleteOuting(id) {
+  if (!confirm('Delete this outing?')) return;
+  outings = outings.filter(o => o.id !== id);
+  if (currentOutingId === id) {
+    if (outings.length > 0) {
+      await loadOuting(outings[outings.length - 1].id);
+    } else {
+      currentOutingId = null;
+      people = [];
+      items = [];
+      render();
+    }
+  }
+  await saveOutings();
+  renderOutingsList();
+}
+
+async function addPerson() {
+  const input = document.getElementById('nameInput');
+  const name = input.value.trim();
+  if (!name) return;
+  if (people.includes(name)) { input.value = ''; return; }
+  people.push(name);
+  input.value = '';
+  render();
+  await saveCurrentState();
+}
+
+async function removePerson(name) {
+  people = people.filter(p => p !== name);
+  items = items.filter(i => i.person !== name);
+  render();
+  await saveCurrentState();
+}
+
+async function addItem() {
+  const nameInput = document.getElementById('itemName');
+  const amountInput = document.getElementById('itemAmount');
+  const personSelect = document.getElementById('itemPerson');
+  const name = nameInput.value.trim();
+  const amount = parseFloat(amountInput.value);
+  const person = personSelect.value;
+  if (!name || isNaN(amount) || amount <= 0 || !person) return;
+  items.push({ name, amount, person });
+  nameInput.value = '';
+  amountInput.value = '';
+  render();
+  await saveCurrentState();
+}
+
+async function removeItem(index) {
+  items.splice(index, 1);
+  render();
+  await saveCurrentState();
+}
+
+async function resetAll() {
+  if (!confirm('Clear all people and items?')) return;
+  people = [];
+  items = [];
+  render();
+  await saveCurrentState();
+}
+
+function formatR(n) {
+  return 'R' + n.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function render() {
+  const peopleList = document.getElementById('peopleList');
+  const personSelect = document.getElementById('itemPerson');
+  const itemsList = document.getElementById('itemsList');
+  const totalsTable = document.getElementById('totalsTable');
+
+  peopleList.innerHTML = '';
+  personSelect.innerHTML = '';
+  if (people.length === 0) {
+    peopleList.innerHTML = '<li class="empty">No people added yet.</li>';
+  }
+  people.forEach(name => {
+    const li = document.createElement('li');
+    li.innerHTML = `<span>${name}</span><button class="del" onclick="removePerson('${name.replace(/'/g,"\\'")}')">Remove</button>`;
+    peopleList.appendChild(li);
+    const opt = document.createElement('option');
+    opt.value = name;
+    opt.textContent = name;
+    personSelect.appendChild(opt);
+  });
+
+  itemsList.innerHTML = '';
+  if (items.length === 0) {
+    itemsList.innerHTML = '<li class="empty">No items added yet.</li>';
+  }
+  items.forEach((item, idx) => {
+    const li = document.createElement('li');
+    li.innerHTML = `<span><span class="item-name">${item.name}</span> <span class="item-meta">— ${item.person}</span></span>
+      <span style="display:flex; align-items:center; gap:8px;">${formatR(item.amount)}
+      <button class="del" onclick="removeItem(${idx})">Remove</button></span>`;
+    itemsList.appendChild(li);
+  });
+
+  // Compute per-person subtotal
+  const subtotals = {};
+  people.forEach(p => subtotals[p] = 0);
+  items.forEach(item => {
+    subtotals[item.person] = (subtotals[item.person] || 0) + item.amount;
+  });
+
+  const billTotal = items.reduce((sum, i) => sum + i.amount, 0);
+  const tipPercent = parseFloat(document.getElementById('tipPercent').value) || 0;
+  const tipTotal = billTotal * (tipPercent / 100);
+  const tipPerPerson = people.length > 0 ? tipTotal / people.length : 0;
+
+  totalsTable.innerHTML = '';
+  if (people.length === 0) {
+    totalsTable.innerHTML = '<tr><td class="empty">Add people to see totals.</td></tr>';
+  } else {
+    people.forEach(p => {
+      const sub = subtotals[p] || 0;
+      const withTip = sub + tipPerPerson;
+      const row = document.createElement('tr');
+      row.innerHTML = `<td>${p}<div class="muted">items: ${formatR(sub)} + tip: ${formatR(tipPerPerson)}</div></td>
+        <td class="amount">${formatR(withTip)}</td>`;
+      totalsTable.appendChild(row);
+    });
+  }
+
+  document.getElementById('billTotal').textContent = formatR(billTotal);
+  document.getElementById('billTotalTip').textContent = formatR(billTotal + tipTotal);
+}
+
+document.getElementById('nameInput').addEventListener('keydown', e => { if (e.key === 'Enter') addPerson(); });
+document.getElementById('itemAmount').addEventListener('keydown', e => { if (e.key === 'Enter') addItem(); });
+
+async function init() {
+  await loadStoredData();
+  if (!currentOutingId || !outings.find(o => o.id === currentOutingId)) {
+    if (outings.length === 0) {
+      await newOuting();
+    } else {
+      await loadOuting(outings[outings.length - 1].id);
+    }
+  } else {
+    await loadOuting(currentOutingId);
+  }
+  renderOutingsList();
+}
+init();
+</script>
+
+</body>
+</html>
